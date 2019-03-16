@@ -1,18 +1,23 @@
+// Esmeralda Magdaleno
+// A01203976
+
 var renderer = null,
 scene = null,
 camera = null,
 root = null,
 group = null,
-lol = null,
 score = 0,
 orbitControls = null;
+
 var flag = 0;
 var speed = 0.1;
 var robots = [];
+
 loopAnimation = false;
 var robot_mixer = {};
 var game = true;
-gameAlreadyStarted = false;
+
+started = false;
 var start = "";
 var startTime = 0;
 var deadAnimator;
@@ -22,153 +27,7 @@ var mouse = new THREE.Vector2(), INTERSECTED, CLICKED;
 var duration = 20000; // ms
 var currentTime = Date.now();
 
-var animation = "idle";
-function initAnimations()
-{
-    animator = new KF.KeyFrameAnimator;
-    animator.init({
-        interps:
-            [
-                {
-                    keys:[0, 0.3, 0.6, 1],
-                    values:[
-                      { x: 0, y : 0, z : 0 },
-                      { x:-Math.PI/6, y : Math.PI/7, z : 0 },
-                      { x:-Math.PI/6 * 2, y : Math.PI/7 *2, z : 0},
-                      { x:-Math.PI/6 * 3, y : Math.PI/7 *3, z : 0 },
-                    ],
-                },
-            ],
-        loop: false
-    });
-}
 
-function changeAnimation(start_text, animation_text){
-    animation = animation_text;
-    start = start_text;
-    if(!gameAlreadyStarted){
-        startTime = Date.now();
-        gameAlreadyStarted = true;
-    }
-}
-function playAnimations(){
-    animator.start();
-}
-
-function loadFBX(i, x, z){
-    var loader = new THREE.FBXLoader();
-    loader.load( 'models/robot_run.fbx', function ( object ){
-        object.mixer = new THREE.AnimationMixer( scene );
-        var action = object.mixer.clipAction( object.animations[ 0 ], object );
-        object.scale.set(0.02, 0.02, 0.02);
-        action.play();
-        object.traverse( function ( child ) {
-            if ( child.isMesh ) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-        robots[i] = object;
-        robots[i].name = i;
-        robots[i].isDead = false;
-        robots[i].tOfDeath = 0;
-        robots[i].position.set(x, -4, z);
-        getNormal(i);
-        scene.add(robots[i]);
-    } );
-}
-
-function getNormal(i){
-    robots[i].originalPositionZ = robots[i].position.z;
-    robots[i].originalPositionX = robots[i].position.x;
-    robots[i].originalPositionY = robots[i].position.y;
-    var xN = camera.position.x - robots[i].position.x;
-    var yN = camera.position.y - robots[i].position.y;
-    var zN = camera.position.z - robots[i].position.z;
-    var xNN = xN * xN;
-    var yNN = yN * yN;
-    var zNN = zN * zN;
-    var normal = xNN + yNN + zNN;
-    normal = Math.sqrt(normal)
-    xN = xN/normal * speed;
-    zN = zN/normal * speed;
-    robots[i].targetPositionX = xN;
-    robots[i].targetPositionZ = zN;
-    robots[i].lookAt(camera.position);
-}
-
-function createDeadAnimation(robot) {
-    tempPos = Math.random() * 100;
-    if(Math.random() < 0.50){
-        tempPos *= -1;
-    }
-    robot.position.z = robot.originalPositionZ;
-    robot.position.x = tempPos;
-    robot.position.y = robot.originalPositionY;
-    i = robot.name;
-    getNormal(i);
-}
-
-function animate() {
-    var now = Date.now();
-    var deltat = now - currentTime;
-    currentTime = now;
-    var time = (now - startTime)/1000
-    document.getElementById("time").innerHTML = time +" s";
-    document.getElementById("points").innerHTML = "Score: " + score;
-    if(start == "start"){
-        for(robot of robots){
-            robot.mixer.update(deltat * 0.001);
-            if(animation == 'run'){
-                robot.position.z += robot.targetPositionZ;
-                robot.position.x += robot.targetPositionX;
-                if(robot.position.z >= camera.position.z){
-                    createDeadAnimation(robot)
-                    score--;
-                }
-            }
-            if(robot.isDead){
-                var seconds2 = (now - robot.tOfDeath)/1000
-                if (seconds2 >= 1.3){
-                    robot.isDead = false;
-                    createDeadAnimation(robot);
-                }
-            }
-        }
-    }
-    if(time >= 60){
-        start = "";
-        for (robot of robots){
-            robot.position.set(robot.originalPositionX, robot.originalPositionY, robot.originalPositionZ);
-        }
-        finalScore = score;
-        alert("Game Over. Your final score is: " + finalScore);
-        time = 0;
-        startTime = 0;
-        document.getElementById("time").innerHTML = time +" s";
-        document.getElementById("points").innerHTML = "score: " + score;
-        gameAlreadyStarted = false;
-    }
-}
-
-function run() {
-        // Render the scene
-        renderer.render( scene, camera );
-
-        // Spin the cube for next frame
-        requestAnimationFrame(function() { run(); });
-        if (start == "start"){
-            animate();
-            KF.update();
-        }
-}
-
-var directionalLight = null;
-var spotLight = null;
-var ambientLight = null;
-var floorURL = "images/grass.jpg";
-
-var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 2048;
 
 function createScene(canvas) {
 
@@ -256,6 +115,155 @@ function createScene(canvas) {
     initAnimations();
 }
 
+var animation = "idle";
+function initAnimations()
+{
+    animator = new KF.KeyFrameAnimator;
+    animator.init({
+        interps:
+            [
+                {
+                    keys:[0, 0.3, 0.6, 1],
+                    values:[
+                      { x: 0, y : 0, z : 0 },
+                      { x:-Math.PI/6, y : Math.PI/7, z : 0 },
+                      { x:-Math.PI/6 * 2, y : Math.PI/7 *2, z : 0},
+                      { x:-Math.PI/6 * 3, y : Math.PI/7 *3, z : 0 },
+                    ],
+                },
+            ],
+        loop: false
+    });
+}
+
+
+function playAnimations(){
+    animator.start();
+}
+
+function changeAnimation(start_text, animation_text){
+    animation = animation_text;
+    start = start_text;
+    if(!started){
+        startTime = Date.now();
+        started = true;
+    }
+}
+
+function loadFBX(i, x, z){
+    var loader = new THREE.FBXLoader();
+    loader.load( 'models/robot_run.fbx', function ( object ){
+        object.mixer = new THREE.AnimationMixer( scene );
+        var action = object.mixer.clipAction( object.animations[ 0 ], object );
+        object.scale.set(0.02, 0.02, 0.02);
+        action.play();
+        object.traverse( function ( child ) {
+            if ( child.isMesh ) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        robots[i] = object;
+        robots[i].name = i;
+        robots[i].isDead = false;
+        robots[i].deadTime = 0;
+        robots[i].position.set(x, -4, z);
+        getNormal(i);
+        scene.add(robots[i]);
+    } );
+}
+
+function getNormal(i){
+    robots[i].originalPositionZ = robots[i].position.z;
+    robots[i].originalPositionX = robots[i].position.x;
+    robots[i].originalPositionY = robots[i].position.y;
+    var xN = camera.position.x - robots[i].position.x;
+    var yN = camera.position.y - robots[i].position.y;
+    var zN = camera.position.z - robots[i].position.z;
+    var xNN = xN * xN;
+    var yNN = yN * yN;
+    var zNN = zN * zN;
+    var normal = xNN + yNN + zNN;
+    normal = Math.sqrt(normal)
+    xN = xN/normal * speed;
+    zN = zN/normal * speed;
+    robots[i].targetPositionX = xN;
+    robots[i].targetPositionZ = zN;
+    robots[i].lookAt(camera.position);
+}
+
+function createDeadAnimation(robot) {
+    tempPos = Math.random() * 100;
+    if(Math.random() < 0.10){
+        tempPos *= -1;
+    }
+    robot.position.z = robot.originalPositionZ;
+    robot.position.x = tempPos;
+    robot.position.y = robot.originalPositionY;
+    i = robot.name;
+    getNormal(i);
+}
+
+function animate() {
+    var now = Date.now();
+    var deltat = now - currentTime;
+    currentTime = now;
+    var time = (now - startTime)/1000
+    document.getElementById("time").innerHTML = time +" s";
+    document.getElementById("points").innerHTML = "Score: " + score;
+    if(start == "start"){
+        for(robot of robots){
+            robot.mixer.update(deltat * 0.001);
+            if(animation == 'run'){
+                robot.position.z += robot.targetPositionZ;
+                robot.position.x += robot.targetPositionX;
+                if(robot.position.z >= camera.position.z){
+                    createDeadAnimation(robot)
+                    score--;
+                }
+            }
+            if(robot.isDead){
+                var seconds2 = (now - robot.deadTime)/1000
+                if (seconds2 >= 1.3){
+                    robot.isDead = false;
+                    createDeadAnimation(robot);
+                }
+            }
+        }
+    }
+    if(time >= 60){
+        start = "";
+        for (robot of robots){
+            robot.position.set(robot.originalPositionX, robot.originalPositionY, robot.originalPositionZ);
+        }
+        finalScore = score;
+        alert("Game Over. Tu puntuación final es: " + finalScore);
+        time = 0;
+        startTime = 0;
+        document.getElementById("time").innerHTML = time +" s";
+        document.getElementById("points").innerHTML = "Score: " + score;
+        started = false;
+    }
+}
+
+function run() {
+        // Render the scene
+        renderer.render( scene, camera );
+        requestAnimationFrame(function() { run(); });
+        if (start == "start"){
+            animate();
+            KF.update();
+        }
+}
+
+var directionalLight = null;
+var spotLight = null;
+var ambientLight = null;
+var floorURL = "images/grass.jpg";
+
+var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 2048;
+
+
 function onDocumentMouseMove( event )
 {
     event.preventDefault();
@@ -313,7 +321,7 @@ function onDocumentMouseDown(event)
         CLICKED = intersects[ 0 ].object;
         for(var i = 0; i<= animator.interps.length -1; i++){
             robots[CLICKED.parent.name].isDead = true;
-            robots[CLICKED.parent.name].tOfDeath = Date.now();
+            robots[CLICKED.parent.name].deadTime = Date.now();
             animator.interps[i].target = robots[CLICKED.parent.name].rotation;
             score ++;
         }
